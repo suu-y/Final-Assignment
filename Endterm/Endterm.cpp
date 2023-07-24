@@ -13,6 +13,9 @@
 #define COLUMN 10
 #define ROW 20
 
+    // メモリのサイズやばいからstaticで？
+static char data[ROW + 1][COLUMN][BUFFSIZE];
+
 struct ROW_st {
     int row_no;
     int col_no;
@@ -21,12 +24,12 @@ struct ROW_st {
 };
 
 struct DB_st {
+    int col_no;
     char* header;
     ROW_st* value;
     DB_st* next_header;
 };
 
-//DB* data_in;
 
 void getCurrentDirectory(char* currentDirectory) {
     GetCurrentDirectory(BUFFSIZE, currentDirectory);
@@ -54,7 +57,6 @@ void CSV2Array(const char* fileName, char data[ROW+1][COLUMN][BUFFSIZE]) {
             char* next_token = NULL;
             int j = 0;
 
-            // Start tokenizing the string
             token = strtok_s(s, ",", &next_token);
             while (token != NULL && j < COLUMN) {
                 //strncpy_s(data[i][j], BUFFSIZE, token, _TRUNCATE);
@@ -75,7 +77,7 @@ void CSV2Array(const char* fileName, char data[ROW+1][COLUMN][BUFFSIZE]) {
               printf("%s ", data[a][b]);
           }
 
-          //printf("\n");
+          if(a==0)printf("\n");
       }
 
 }
@@ -92,10 +94,11 @@ std::tuple<char*, char*, char*> checkCondition(char* condition) {
 
 
     // 条件式の内容を確認
-    AND = strstr(condition, "AND");
     Equal = strchr(condition, '=');
-    Greater_than = strchr(condition, '<');
-    Less_than = strchr(condition, '>');
+    Greater_than = strchr(condition, '>');
+    Less_than = strchr(condition, '<');
+
+
     if (Equal) {
         sign = (char*)"=";
         conditionColumn = strtok_s(condition, "=", &next_token);
@@ -104,18 +107,35 @@ std::tuple<char*, char*, char*> checkCondition(char* condition) {
     if (Greater_than) {
         sign = (char*)">";
         conditionColumn = strtok_s(condition, ">", &next_token);
-        conditionValue = strtok_s(next_token, " ", &next_token);
+        conditionValue = strtok_s(next_token, "", &next_token);
     }
     if (Less_than) {
         sign = (char*)"<";
         conditionColumn = strtok_s(condition, "<", &next_token);
-        conditionValue = strtok_s(next_token, " ", &next_token);
+        conditionValue = strtok_s(next_token, "", &next_token);
     }
+
+    //condition = next_token;
 
     return std::forward_as_tuple(conditionColumn, conditionValue, sign);
 }
 
+// 改行コード削除
+void remove_newline(char* str) {
+    int len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n')    str[len - 1] = '\0'; 
+}
 
+// 出力関数
+void  output (int selectRow, int selectCol) {
+    if (selectCol > 0)   printf("%s\n", data[selectRow][selectCol]);
+    else {
+        for (int i = 0; i < COLUMN; i++) {
+            printf("%s ", data[selectRow][i]);
+        }
+        printf("\n");
+    }
+}
 
 int main() {
     
@@ -129,9 +149,6 @@ int main() {
     char file_name[BUFFSIZE];
     readStr("section1", "file_name", "", file_name, sizeof(file_name), settingFile);
 
-    // メモリのサイズやばいからstaticで？
-    static char data[ROW+1][COLUMN][BUFFSIZE];
-
     CSV2Array(file_name, data);
 
     ////////////////////////
@@ -140,7 +157,9 @@ int main() {
 
     for (int DBIndex = 0; DBIndex < COLUMN; DBIndex++) {
         DB_st* newDB = new DB_st();
+        remove_newline(data[0][DBIndex]);
         newDB->header = data[0][DBIndex];
+        newDB->col_no = DBIndex;
         newDB->value = NULL;
         newDB->next_header = NULL;
 
@@ -176,23 +195,7 @@ int main() {
         previousDB = newDB;
     }
 
-    // 出力
-/*
-    DB_st* currentDB = firstDB;
 
-    while (currentDB != NULL) {
-        fprintf_s(stdout, "DB_st header = %s\n", currentDB->header);
-
-        ROW_st* currentRow = currentDB->value;
-
-        while (currentRow != NULL) {
-            currentRow = currentRow->next_row;
-        }
-
-        currentDB = currentDB->next_header;
-    }
-*/
-    ////////////////////////
 
 
     // 入力受付
@@ -201,51 +204,58 @@ int main() {
     char* conditionColumn = NULL;
     char* conditionValue = NULL;
     char* sign = NULL;
+    int conditionValue_int = 0;
+
+    printf_s("---------------------------------------------\n");
     printf_s("select: ");
     scanf_s("%255s", &select, 255);
 
     printf_s("where: ");
     scanf_s("%255s", &where, 255);
 
+    printf_s("---------------------------------------------\n");
+
     std::tie(conditionColumn, conditionValue, sign) = checkCondition(where);
 
+    if (sign == ">" || sign == "<") {
+        conditionValue_int = atof(conditionValue);
+    }
+
     int selectRow = -1;
+    int selectCol = -1;
+
+    DB_st* DB_forHeader = firstDB;
+    while (DB_forHeader != NULL) {
+        if (strcmp(DB_forHeader->header, select) == 0) {
+            selectCol = DB_forHeader->col_no;
+        }
+        DB_forHeader = DB_forHeader->next_header;
+    }
 
     DB_st* currentDB = firstDB;
 
     while (currentDB != NULL) {
-        //fprintf_s(stdout, "DB_st header = %s\n", currentDB->header);
+
         if (strcmp(currentDB->header, conditionColumn) == 0) {
             ROW_st* currentRow = currentDB->value;
 
             while (currentRow != NULL) {
-                if (strcmp(currentRow->value, conditionValue) == 0) {
-                    fprintf_s(stdout, "%d, %d\n", currentRow->row_no, currentRow->col_no);
+                if (sign=="=" && strcmp(currentRow->value, conditionValue) == 0) {
                     selectRow = currentRow->row_no;
+                    output(selectRow, selectCol);
+                }
+                else if (sign == ">" && (atof(currentRow->value) > conditionValue_int)) {
+                    selectRow = currentRow->row_no;
+                    output(selectRow, selectCol);
+                }
+                else if (sign == "<" && (atof(currentRow->value) < conditionValue_int)) {
+                    selectRow = currentRow->row_no;
+                    output(selectRow, selectCol);
                 }
 
                 currentRow = currentRow->next_row;
             }
         }    
-        currentDB = currentDB->next_header;
-    }
-
-    currentDB = firstDB;
-
-    while (currentDB != NULL) {
-        if (strcmp(currentDB->header, select) == 0) {
-            ROW_st* currentRow = currentDB->value;
-
-            while (currentRow != NULL) {
-                if (currentRow->row_no == selectRow) {
-                    printf("%s\n", currentRow->value);
-                    break;
-                }
-
-                currentRow = currentRow->next_row;
-            }
-        }
-
         currentDB = currentDB->next_header;
     }
 
