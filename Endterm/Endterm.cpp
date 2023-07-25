@@ -143,7 +143,7 @@ int main() {
             currentDB = currentDB->next_header;
         }
     }
-    fprintf(fp, "\n", "");
+    fprintf(fp, "\n");
     fclose(fp);
 
     return 0;
