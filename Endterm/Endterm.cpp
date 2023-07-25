@@ -126,16 +126,40 @@ void remove_newline(char* str) {
     if (len > 0 && str[len - 1] == '\n')    str[len - 1] = '\0'; 
 }
 
+// log出力
+void write_log(char* log) {
+
+    FILE *fp;
+    errno_t error;
+    error = fopen_s(&fp, "log.txt", "a");
+
+    if (error != 0) {
+        printf("failed to open.");
+    }
+    else {
+        fprintf(fp, "%s ", log);
+    }
+}
+
 // 出力関数
-void  output (int selectRow, int selectCol) {
-    if (selectCol > 0)   printf("%s\n", data[selectRow][selectCol]);
+void  output (FILE* fp, errno_t error, int selectRow, int selectCol) {
+
+    
+    //error = fopen_s(&fp, "log.txt", "a");
+    if (selectCol > 0) {
+        printf("%s\n", data[selectRow][selectCol]);
+        fprintf(fp, "%s\n", data[selectRow][selectCol]);
+    }
     else {
         for (int i = 0; i < COLUMN; i++) {
             printf("%s ", data[selectRow][i]);
+            fprintf(fp, "%s ", data[selectRow][i]);
         }
         printf("\n");
+        fprintf(fp, "%s", "\n");
     }
 }
+
 
 int main() {
     
@@ -168,6 +192,7 @@ int main() {
 
         for (int ROWIndex = 1; ROWIndex <= ROW; ROWIndex++) {
             ROW_st* tmp = new ROW_st();
+            remove_newline(data[ROWIndex][DBIndex]);
             tmp->row_no = ROWIndex;
             tmp->col_no = DBIndex;
             tmp->value = data[ROWIndex][DBIndex];
@@ -199,65 +224,78 @@ int main() {
 
 
     // 入力受付
-    char select[BUFFSIZE];
-    char where[BUFFSIZE];
-    char* conditionColumn = NULL;
-    char* conditionValue = NULL;
-    char* sign = NULL;
-    int conditionValue_int = 0;
-
-    printf_s("---------------------------------------------\n");
-    printf_s("select: ");
-    scanf_s("%255s", &select, 255);
-
-    printf_s("where: ");
-    scanf_s("%255s", &where, 255);
-
-    printf_s("---------------------------------------------\n");
-
-    std::tie(conditionColumn, conditionValue, sign) = checkCondition(where);
-
-    if (sign == ">" || sign == "<") {
-        conditionValue_int = atof(conditionValue);
+    FILE *fp;
+    errno_t error;
+    error = fopen_s(&fp, "log.txt", "a");
+    if (error != 0) {
+        printf("failed to open.");
     }
+    else {
+        char select[BUFFSIZE];
+        char where[BUFFSIZE];
+        char* conditionColumn = NULL;
+        char* conditionValue = NULL;
+        char* sign = NULL;
+        int conditionValue_int = 0;
 
-    int selectRow = -1;
-    int selectCol = -1;
+        printf_s("---------------------------------------------\n");
+        fprintf(fp, "------------------------------------------\n");
+        printf_s("SELECT: ");
+        scanf_s("%255s", &select, 255);
+        fprintf(fp, "SELECT: %s\n", select);
 
-    DB_st* DB_forHeader = firstDB;
-    while (DB_forHeader != NULL) {
-        if (strcmp(DB_forHeader->header, select) == 0) {
-            selectCol = DB_forHeader->col_no;
+        printf_s("where: ");
+        scanf_s("%255s", &where, 255);
+        fprintf(fp, "WHERE: %s\n", where);
+        printf_s("---------------------------------------------\n");
+        fprintf(fp, "------------------------------------------\n");
+
+        std::tie(conditionColumn, conditionValue, sign) = checkCondition(where);
+
+        if (sign == ">" || sign == "<") {
+            conditionValue_int = atof(conditionValue);
         }
-        DB_forHeader = DB_forHeader->next_header;
-    }
 
-    DB_st* currentDB = firstDB;
+        int selectRow = -1;
+        int selectCol = -1;
 
-    while (currentDB != NULL) {
-
-        if (strcmp(currentDB->header, conditionColumn) == 0) {
-            ROW_st* currentRow = currentDB->value;
-
-            while (currentRow != NULL) {
-                if (sign=="=" && strcmp(currentRow->value, conditionValue) == 0) {
-                    selectRow = currentRow->row_no;
-                    output(selectRow, selectCol);
-                }
-                else if (sign == ">" && (atof(currentRow->value) > conditionValue_int)) {
-                    selectRow = currentRow->row_no;
-                    output(selectRow, selectCol);
-                }
-                else if (sign == "<" && (atof(currentRow->value) < conditionValue_int)) {
-                    selectRow = currentRow->row_no;
-                    output(selectRow, selectCol);
-                }
-
-                currentRow = currentRow->next_row;
+        DB_st* DB_forHeader = firstDB;
+        while (DB_forHeader != NULL) {
+            if (strcmp(DB_forHeader->header, select) == 0) {
+                selectCol = DB_forHeader->col_no;
             }
-        }    
-        currentDB = currentDB->next_header;
+            DB_forHeader = DB_forHeader->next_header;
+        }
+
+        DB_st* currentDB = firstDB;
+
+        while (currentDB != NULL) {
+
+            if (strcmp(currentDB->header, conditionColumn) == 0) {
+                ROW_st* currentRow = currentDB->value;
+
+                while (currentRow != NULL) {
+                    if (sign == "=" && strcmp(currentRow->value, conditionValue) == 0) {
+                        selectRow = currentRow->row_no;
+                        output(fp, error, selectRow, selectCol);
+                    }
+                    else if (sign == ">" && (atof(currentRow->value) > conditionValue_int)) {
+                        selectRow = currentRow->row_no;
+                        output(fp, error, selectRow, selectCol);
+                    }
+                    else if (sign == "<" && (atof(currentRow->value) < conditionValue_int)) {
+                        selectRow = currentRow->row_no;
+                        output(fp, error, selectRow, selectCol);
+                    }
+
+                    currentRow = currentRow->next_row;
+                }
+            }
+            currentDB = currentDB->next_header;
+        }
     }
+    fprintf(fp, "\n", "");
+    fclose(fp);
 
     return 0;
 
