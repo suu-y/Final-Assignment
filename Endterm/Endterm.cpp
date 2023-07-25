@@ -75,7 +75,7 @@ int main() {
     // 入力受付
     FILE *fp;
     errno_t error;
-    error = fopen_s(&fp, "log.txt", "a");
+    error = fopen_s(&fp, "query_n_view.log", "a");
     if (error != 0) {
         printf("failed to open.");
     }
@@ -149,25 +149,10 @@ int main() {
     return 0;
 }
 
-// log出力
-void write_log(char* log) {
-
-    FILE* fp;
-    errno_t error;
-    error = fopen_s(&fp, "log.txt", "a");
-
-    if (error != 0) {
-        printf("failed to open.");
-    }
-    else {
-        fprintf(fp, "%s ", log);
-    }
-}
-
 // 出力関数
 void  output(FILE* fp, errno_t error, int selectRow, int selectCol) {
 
-    if (selectCol > 0) {
+    if (selectCol >= 0) {
         printf("%s\n", data[selectRow][selectCol]);
         fprintf(fp, "%s\n", data[selectRow][selectCol]);
     }

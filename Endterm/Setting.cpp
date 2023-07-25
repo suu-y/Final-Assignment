@@ -11,11 +11,6 @@ void readStr(const char* section, const char* keyword,
 	//return buff;
 }
 
-int readInt(const char* section, const char* keyword,
-	int defaultValue, const char* filePath) {
-
-	return GetPrivateProfileInt(section, keyword, defaultValue, filePath);
-}
 
 void getCurrentDirectory(char* currentDirectory) {
 	GetCurrentDirectory(BUFFSIZE, currentDirectory);
