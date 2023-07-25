@@ -16,3 +16,7 @@ int readInt(const char* section, const char* keyword,
 
 	return GetPrivateProfileInt(section, keyword, defaultValue, filePath);
 }
+
+void getCurrentDirectory(char* currentDirectory) {
+	GetCurrentDirectory(BUFFSIZE, currentDirectory);
+}
